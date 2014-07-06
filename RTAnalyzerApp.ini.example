@@ -1,0 +1,5 @@
+; This file is created manually
+
+[Consumer Keys]
+consumer_key = (API key here, without quotes or brackets)
+consumer_key_secret = (API secret key here, without quotes or brackets)

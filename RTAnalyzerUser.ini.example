@@ -1,0 +1,9 @@
+; This file is created by the script
+
+[Access Tokens]
+user_access_token = (Key here, without quotes or brackets)
+user_access_token_secret = (Secret key here, without quotes or brackets)
+
+[Profile]
+profile_set = False
+
