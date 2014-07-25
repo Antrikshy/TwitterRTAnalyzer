@@ -1,9 +1,9 @@
-import sys, json, ConfigParser
+import sys, time, json, ConfigParser
 from rauth import OAuth1Service
 
 config = ConfigParser.ConfigParser()
 
-def setup_profile():
+def setupProfile():
     print "Connecting to Twitter..."
     twitter = OAuth1Service(name='twitter',
                             consumer_key='M4npIbKMiY91HV1czc21YlfUL',
@@ -40,6 +40,19 @@ def setup_profile():
 
     session.close()
 
+def printFinalData(data_list, num_of_search_tweets, num_of_timeline_tweets):
+    for dictionary in data_list:
+        print "--------------------------------"
+        print "Username: " + dictionary['screen_name']
+        print "Followers: " + str(dictionary['followers_count'])
+        print "Replies: " + str(dictionary['percent_of_replies']) + "%"
+        print "Retweets: " + str(dictionary['percent_of_retweets']) + "%"
+        print "--------------------------------\n"
+        time.sleep(0.5)
+    
+    print (str(num_of_search_tweets) + " tweets were taken from search results, " + str(num_of_timeline_tweets) + " tweets were analyzed from" +
+           " each person's timeline.\n Results do not include people with follower count under the specified threshold.\n")
+
 def main():
     # Read first config file
     config.read('RTAnalyzerUser.ini')
@@ -47,7 +60,7 @@ def main():
     # First time set up (if no keys stored in config file)
     if config.getboolean("Profile", "profile_set") is False:
         print "Profile not set. Setting up new profile..."
-        setup_profile()
+        setupProfile()
 
     # Get access tokens now stored in config file
     access_token = config.get('Access Tokens', 'user_access_token')
@@ -86,11 +99,10 @@ def main():
         print "That was not a valid number! Defaulting to no threshold..."
         followers_threshold = 0
 
-    search_tweet_count = 50
-    timeline_search_count = 50
+    search_tweet_count = config.getint('Settings', 'search_tweet_count')
+    timeline_search_count = config.getint('Settings', 'timeline_search_count')
 
     search_results = session.get('search/tweets.json', params={'q':search_query, 'lang':'en', 'count':search_tweet_count})
-
     search_results_json_string = search_results.json()
 
     tweet_database = [{'screen_name':None, 'followers_count':None} for _ in range(search_tweet_count)]
@@ -105,6 +117,8 @@ def main():
     user_rawdata_database = [{'screen_name':None, 'num_of_replies':0, 'num_of_retweets':0, 'followers_count':0} for _ in range(len(tweet_database))]
     current_user = 0
 
+    # print json.dumps(search_results_json_string, sort_keys=True, indent=4, separators=(',', ': '))
+
     for user_dict in tweet_database:
         user_timeline = session.get('statuses/user_timeline.json', params={'screen_name':user_dict['screen_name'],
                                     'count':timeline_search_count, 'trim_user':1})
@@ -114,7 +128,7 @@ def main():
         user_rawdata_database[current_user]['followers_count'] = user_dict['followers_count']
         
         for tweet_index in range(len(user_timeline_json_string)):
-            if user_timeline_json_string[tweet_index]['in_reply_to_user_id'] is not None:
+            if user_timeline_json_string[tweet_index]['in_reply_to_screen_name'] is not None:
                 user_rawdata_database[current_user]['num_of_replies'] += 1
 
         for tweet_index in range(len(user_timeline_json_string)):
@@ -136,7 +150,8 @@ def main():
 
         current_user += 1
 
-    print(json.dumps(user_processed_data, indent=4))
+    user_processed_data = sorted(user_processed_data, key=lambda k: k['followers_count'], reverse=True)
+    printFinalData(user_processed_data, search_tweet_count, timeline_search_count)
 
 if __name__ == "__main__":
     main()
